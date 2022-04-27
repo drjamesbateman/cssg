@@ -74,6 +74,9 @@ def push_page(mdfile):
     if wiki_page is None:
         return
     
+    title = wiki_page['title']
+    body  = wiki_page['body']
+    
     # If this is in a sub-directory, then assume that is the intended Canvas Module
     if mdfile.count('/') == 3: #e.g. content/Modules/Part 1/review-1a.md'
         module_name = mdfile.split('/')[2].replace("_", " ")
