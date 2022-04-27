@@ -4,7 +4,7 @@ A very simplistic SSG for [Canvas](https://www.instructure.com/) using [canvasap
 
 # Pages
 
-Pages are written in [Markdown](https://www.markdownguide.org/getting-started/) and must have the following [TAML](https://en.wikipedia.org/wiki/YAML) header:
+Pages are written in [Markdown](https://www.markdownguide.org/getting-started/) and must have the following [YAML](https://en.wikipedia.org/wiki/YAML) header:
 
 ```yaml
 ---
@@ -12,7 +12,7 @@ title: Title which matches the filename
 ---
 ```
 
-For links between Markdown documents to be interpreted correctly by any sane system and by Canvas, then we must mimic the way in which Canvas converts titles to filenames.  The above would become `title-which-matches-the-filename`.
+For links between Markdown documents to be interpreted correctly by Canvas, then we must mimic the way in which Canvas converts titles to filenames.  The above would become `title-which-matches-the-filename.md`.  A link to this from elsewhere would be `See [here](title-which-matches-the-filename).`.
 
 # Organisation
 
@@ -44,7 +44,7 @@ Create the file `config.json` containing the following:
 
 Pages can either be here or inside a folder here.  If they are inside a folder, then that folder name will be used as a Canvas Module.
 
-For example, in the following `general-information.md` is not associated with a Module and `powder-x-ray-camera.md` is placed inside a Module.
+For example, in the following `general-information.md` is not associated with a Module and `powder-x-ray-camera.md` is placed inside a Module called "Crystallography".
 
 ```
 general-information.md
