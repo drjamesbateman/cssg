@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+
+from glob import glob
+from canvasapi import Canvas
+from canvasapi import exceptions as cx
+from re import findall
+from urllib.parse import quote
+from os import system, stat, makedirs
+from os.path import exists, dirname
+import json
+
+def mdfilename2htmlfilename(mdf):
+    a,b = 'content/', '.md'
+    assert mdf.startswith(a)
+    assert mdf.endswith(b)
+    return 'static/' + mdf[len(a):-len(b)] + ".html"
+
+def push_page(mdfile):
+
+    htfile = mdfilename2htmlfilename(mdfile)
+
+    makedirs(dirname(htfile),exist_ok=True)
+
+    # If the HTML file exists and is newer than the markdown, then nothing to do
+    if exists(htfile):
+        if stat(htfile).st_mtime > stat(mdfile).st_mtime:
+            return
+        else:
+            print("Updating {}".format(mdfile))
+    else:
+        print("Creating {}".format(mdfile))
+
+    # Find the long title associated with this markdown file
+    title = None
+    with open(mdfile) as h:
+        lines = h.readlines()
+        for line in lines[1:]:
+            if line.startswith('---'):
+                break
+            if line.startswith('title:'):
+                title = line.split('title:')[1].strip()
+    if title is None:
+        raise Exception(f"No title for {mdfile}")
+    
+    # If this is in a sub-directory, then assume that is the intended Canvas Module
+    if mdfile.count('/') == 3: #e.g. content/Modules/Part 1/review-1a.md'
+        module_name = mdfile.split('/')[2].replace("_", " ")
+        page_url = mdfile.split('/')[3].split('.md')[0]
+    else:
+        module_name = None
+        # page_url is only needed when we're putting a page into a Canvas Module
+
+    # Pandoc to create the HTML file; we then tinker with it
+    system(f"pandoc -t html -o '{htfile}' --webtex '{mdfile}'")
+
+    # Equations are a bit of an ugly hack
+    # the lines below convert the pandoc code to something using Canvas's renderer
+    # see here for why it's double-encoded: https://community.canvaslms.com/t5/Canvas-Instructional-Designer/Best-way-to-add-LaTeX-equations/td-p/175131
+    html = open(htfile).read()
+    tag = "https://latex.codecogs.com/png.latex?"
+    eqns = findall("\"https://latex.codecogs.com/png.latex\?([^\"]+)\"",html)
+    for eqn in eqns:
+        html = html.replace(tag + eqn + "\"", "/equation_images/" + quote(eqn) + "\"", 1)
+    with open(htfile, 'w') as h:
+        h.write(html)
+
+    # Add borders to tables; crude but e.g. this didn't seem to work: https://stackoverflow.com/questions/27300329/table-with-borders-in-html-and-latex-output-from-markdown-source-with-pandoc
+    old = '<table>'
+    new = '<table style="border-collapse: collapse;" border="1">'
+    html = open(htfile).read()
+    html = html.replace(old,new)
+    with open(htfile, 'w') as h:
+        h.write(html)
+
+    # Upload to canvas
+    with open(htfile) as h: body = h.read()
+
+    wiki_page = {'title': title, 'body': body}
+
+    try:
+        page = course.get_page(wiki_page['title'])
+        page.edit(wiki_page=wiki_page)
+    except cx.ResourceDoesNotExist:
+        course.create_page(wiki_page)
+
+    if module_name is not None:
+        module_names = [m.name for m in course.get_modules()]
+        if not module_name in module_names:
+            print("Creating module", module_name)
+            course.create_module({"name": module_name})
+        modules = [*course.get_modules()]
+        m = [m for m in modules if m.name == module_name][0]
+        existing = [(m.title, m.page_url) for m in m.get_module_items()]
+        if (title, page_url) in existing:
+            pass
+        else:
+            print("Adding page to module", module_name)
+            m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url})
+
+if __name__=='__main__':
+    # Load credentials and connect to Canvas
+    with open("config.json") as h:
+        config = json.load(h)
+    canvas = Canvas(config['API_URL'], config['TOKEN'])
+    course = canvas.get_course(config['course'])
+
+    # Find and push all Modules
+    mdfiles = glob("content/Modules/**/*.md", recursive=True)
+    for f in mdfiles:
+        push_page(f)
+
+    # Find and push all Discussions
+    
+    # Find and push all Assignments
+    
