@@ -15,16 +15,17 @@ def mdfilename2htmlfilename(mdf):
     assert mdf.endswith(b)
     return 'static/' + mdf[len(a):-len(b)] + ".html"
 
-def push_page(mdfile):
-
+def md2html(mdfile):
+    """Convert a Markdown file to Canvas-suitable HTML fragment.
+    Returns: {'title': title, 'body': body}"""
+    
     htfile = mdfilename2htmlfilename(mdfile)
-
     makedirs(dirname(htfile),exist_ok=True)
 
     # If the HTML file exists and is newer than the markdown, then nothing to do
     if exists(htfile):
         if stat(htfile).st_mtime > stat(mdfile).st_mtime:
-            return
+            return None
         else:
             print("Updating {}".format(mdfile))
     else:
@@ -42,14 +43,6 @@ def push_page(mdfile):
     if title is None:
         raise Exception(f"No title for {mdfile}")
     
-    # If this is in a sub-directory, then assume that is the intended Canvas Module
-    if mdfile.count('/') == 3: #e.g. content/Modules/Part 1/review-1a.md'
-        module_name = mdfile.split('/')[2].replace("_", " ")
-        page_url = mdfile.split('/')[3].split('.md')[0]
-    else:
-        module_name = None
-        # page_url is only needed when we're putting a page into a Canvas Module
-
     # Pandoc to create the HTML file; we then tinker with it
     system(f"pandoc -t html -o '{htfile}' --webtex '{mdfile}'")
 
@@ -72,11 +65,23 @@ def push_page(mdfile):
     with open(htfile, 'w') as h:
         h.write(html)
 
-    # Upload to canvas
     with open(htfile) as h: body = h.read()
+    return {'title': title, 'body': body}
 
-    wiki_page = {'title': title, 'body': body}
-
+        
+def push_page(mdfile):
+    wiki_page = md2html(mdfile)
+    if wiki_page is None:
+        return
+    
+    # If this is in a sub-directory, then assume that is the intended Canvas Module
+    if mdfile.count('/') == 3: #e.g. content/Modules/Part 1/review-1a.md'
+        module_name = mdfile.split('/')[2].replace("_", " ")
+        page_url = mdfile.split('/')[3].split('.md')[0]
+    else:
+        module_name = None
+        # page_url is only needed when we're putting a page into a Canvas Module
+        
     try:
         page = course.get_page(wiki_page['title'])
         page.edit(wiki_page=wiki_page)
@@ -97,6 +102,29 @@ def push_page(mdfile):
             print("Adding page to module", module_name)
             m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url})
 
+def push_assignment(mdfile):
+    wiki_page = md2html(mdfile)
+    if wiki_page is None:
+        return
+
+    title = wiki_page['title']
+    body  = wiki_page['body']
+
+    assignments = [*course.get_assignments()]
+
+    if not title in [a.name for a in assignments]:
+        raise Exception("No existing Assignment of name", title)
+
+    assignment = assignments[[a.name for a in assignments].index(title)]
+    assignment.edit(assignment={"description": body})
+
+def push_discussion(mdfile):
+    wiki_page = md2html(mdfile)
+    if wiki_page is None:
+        return
+
+    raise Exception("Not yet implemented; see PH204 2022 code")
+
 if __name__=='__main__':
     # Load credentials and connect to Canvas
     with open("config.json") as h:
@@ -105,11 +133,20 @@ if __name__=='__main__':
     course = canvas.get_course(config['course'])
 
     # Find and push all Modules
+    makedirs("content/Modules", exist_ok=True)
     mdfiles = glob("content/Modules/**/*.md", recursive=True)
     for f in mdfiles:
         push_page(f)
 
-    # Find and push all Discussions
-    
     # Find and push all Assignments
+    makedirs("content/Assigments", exist_ok=True)
+    mdfiles = glob("content/Assignments/*.md")
+    for f in mdfiles:
+        push_assignment(f)
+        
+    # Find and push all Discussions
+    makedirs("content/Discussions", exist_ok=True)
+    mdfiles = glob("content/Discussions/*.md")
+    for f in mdfiles:
+        push_discussion(f)
     
