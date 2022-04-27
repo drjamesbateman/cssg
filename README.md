@@ -20,10 +20,9 @@ Create a new folder to store the site.  The folder structure should be:
 
 ```
 ./config.json
-./content/...
 ./content/Modules/...
-./content/Discussions/...
 ./content/Assignments/...
+./content/Discussions/...
 ./static/...
 ```
 
@@ -41,14 +40,27 @@ Create the file `config.json` containing the following:
   }
 ```
 
-## content
-
-Pages herein are not associated with a specific module.
-
 ## Modules
 
-## Discussions
+Pages can either be here or inside a folder here.  If they are inside a folder, then that folder name will be used as a Canvas Module.
+
+For example, in the following `general-information.md` is not associated with a Module and `powder-x-ray-camera.md` is placed inside a Module.
+
+```
+general-information.md
+Crystallography/powder-x-ray-camera.md
+```
+
+Structure of pages within a Canvas module is not controlled, but ordering and indentation should not change when you update page contents.
 
 ## Assignments
 
+An existing assignment with the correct name should exist before you try to push contents.  If not, an error will be raised.
+
+## Discussions
+
+This is not yet implemented here; it works elsewhere in more scrappy code.
+
 ## static
+
+Thie folder contains HTML created in preparation for upload to Canvas.  It should never store Markdown files and it can be safely deleted.
