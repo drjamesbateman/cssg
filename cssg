@@ -46,6 +46,12 @@ def md2html(mdfile):
     # Pandoc to create the HTML file; we then tinker with it
     system(f"pandoc -t html -F mermaid-filter -o '{htfile}' --webtex '{mdfile}'")
 
+    # Strip all ".md" extensions from hyperlinks; Canvas doesn't like this but other renderers (e.g. github) require it.
+    html = open(htfile).read()
+    html = html.replace('.md">','">')
+    with open(htfile, 'w') as h:
+        h.write(html)
+    
     # Equations are a bit of an ugly hack
     # the lines below convert the pandoc code to something using Canvas's renderer
     # see here for why it's double-encoded: https://community.canvaslms.com/t5/Canvas-Instructional-Designer/Best-way-to-add-LaTeX-equations/td-p/175131

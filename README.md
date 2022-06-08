@@ -12,7 +12,7 @@ title: Title which matches the filename
 ---
 ```
 
-For links between Markdown documents to be interpreted correctly by Canvas, then we must mimic the way in which Canvas converts titles to filenames.  The above would become `title-which-matches-the-filename.md`.  A link to this from elsewhere would be `See [here](title-which-matches-the-filename).`.
+For links between Markdown documents to be interpreted correctly by Canvas, then we must mimic the way in which Canvas converts titles to filenames.  The above would become `title-which-matches-the-filename.md`.  A link to this from elsewhere would be `See [here](title-which-matches-the-filename.md)`.
 
 # Organisation
 
