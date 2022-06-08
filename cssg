@@ -44,7 +44,7 @@ def md2html(mdfile):
         raise Exception(f"No title for {mdfile}")
     
     # Pandoc to create the HTML file; we then tinker with it
-    system(f"pandoc -t html -o '{htfile}' --webtex '{mdfile}'")
+    system(f"pandoc -t html -F mermaid-filter -o '{htfile}' --webtex '{mdfile}'")
 
     # Equations are a bit of an ugly hack
     # the lines below convert the pandoc code to something using Canvas's renderer
