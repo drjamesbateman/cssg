@@ -15,22 +15,33 @@ def mdfilename2htmlfilename(mdf):
     assert mdf.endswith(b)
     return 'static/' + mdf[len(a):-len(b)] + ".html"
 
-def md2html(mdfile):
-    """Convert a Markdown file to Canvas-suitable HTML fragment.
-    Returns: {'title': title, 'body': body}"""
-    
-    htfile = mdfilename2htmlfilename(mdfile)
+def md_needs_updating(mdfile,htfile=None):
+    """Check whether a given Markdown file has changed since last push.
+    If given, compare against specified HTML file rather than one derived from Markdown file name.
+    Returns : True (yes, it has changed; we should update)
+              False (no change; no need to update)"""
+
+    if htfile is None:
+        htfile = mdfilename2htmlfilename(mdfile)
     makedirs(dirname(htfile),exist_ok=True)
 
-    # If the HTML file exists and is newer than the markdown, then nothing to do
     if exists(htfile):
         if stat(htfile).st_mtime > stat(mdfile).st_mtime:
-            return None
+            return False
         else:
             print("Updating {}".format(mdfile))
     else:
         print("Creating {}".format(mdfile))
+    return True
 
+
+def md2html(mdfile):
+    """Convert a Markdown file to Canvas-suitable HTML fragment.
+    Returns: {'title': title, 'body': body}"""
+
+    htfile = mdfilename2htmlfilename(mdfile)
+    makedirs(dirname(htfile),exist_ok=True)
+    
     # Find the long title associated with this markdown file
     title = None
     with open(mdfile) as h:
@@ -76,9 +87,8 @@ def md2html(mdfile):
 
         
 def push_page(mdfile):
+    if not md_needs_updating(mdfile): return
     wiki_page = md2html(mdfile)
-    if wiki_page is None:
-        return
     
     title = wiki_page['title']
     body  = wiki_page['body']
@@ -112,9 +122,8 @@ def push_page(mdfile):
             m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url})
 
 def push_assignment(mdfile):
+    if not md_needs_updating(mdfile): return   
     wiki_page = md2html(mdfile)
-    if wiki_page is None:
-        return
 
     title = wiki_page['title']
     body  = wiki_page['body']
@@ -128,10 +137,30 @@ def push_assignment(mdfile):
     assignment.edit(assignment={"description": body})
 
 def push_discussion(mdfile):
+    # Split Markdown at "***\n"; text after this marker is the suggested answer
+
+    # Everything below "***" in the markdown should be interpreted as a post to be made on that discussion topic
+    markdown = open(filename + ".md").read()
+    N = markdown.index("\n***\n")
+    with open("topic.md", 'w') as h:
+        h.write(markdown[:N]  + '\n')
+    with open("post.md", 'w') as h:
+        h.write(markdown[N+5:])
+
     wiki_page = md2html(mdfile)
     if wiki_page is None:
         return
+    
+    title = wiki_page['title']
+    body  = wiki_page['body']
 
+    discussions = [*course.get_discussion_topics()]
+
+    if title in [a.title for a in discussions]:
+        discussion = discussions[[a.title for a in discussions].index(title)]
+    else:
+        discussion = course.create_discussion_topic(title=title, require_initial_post=True)
+    
     raise Exception("Not yet implemented; see PH204 2022 code")
 
 if __name__=='__main__':
