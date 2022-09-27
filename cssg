@@ -35,22 +35,23 @@ def md_needs_updating(mdfile,htfile=None):
     return True
 
 
-def md2html(mdfile):
+def md2html(mdfile,title=None):
     """Convert a Markdown file to Canvas-suitable HTML fragment.
+    Unless specified, title will be extracted from the YAML.
     Returns: {'title': title, 'body': body}"""
 
     htfile = mdfilename2htmlfilename(mdfile)
     makedirs(dirname(htfile),exist_ok=True)
     
     # Find the long title associated with this markdown file
-    title = None
-    with open(mdfile) as h:
-        lines = h.readlines()
-        for line in lines[1:]:
-            if line.startswith('---'):
-                break
-            if line.startswith('title:'):
-                title = line.split('title:')[1].strip()
+    if title is None:
+        with open(mdfile) as h:
+            lines = h.readlines()
+            for line in lines[1:]:
+                if line.startswith('---'):
+                    break
+                if line.startswith('title:'):
+                    title = line.split('title:')[1].strip()
     if title is None:
         raise Exception(f"No title for {mdfile}")
     
@@ -136,32 +137,50 @@ def push_assignment(mdfile):
     assignment = assignments[[a.name for a in assignments].index(title)]
     assignment.edit(assignment={"description": body})
 
-def push_discussion(mdfile):
-    # Split Markdown at "***\n"; text after this marker is the suggested answer
+def push_discussion(mdfile):   
+    mdfile_topic = mdfile+"_topic.md"
+    mdfile_post  = mdfile+"_post.md"
 
+    # Compare the age of the parent Markdown file against each HTML file (topic and post files)
+    if not any([md_needs_updating(mdfile,mdfilename2htmlfilename(md)) for md in [mdfile_topic,mdfile_post]]): return
+    
     # Everything below "***" in the markdown should be interpreted as a post to be made on that discussion topic
-    markdown = open(filename + ".md").read()
+    # Split the markdown file into two separate files, which we upload in different ways
+    markdown = open(mdfile).read()
     N = markdown.index("\n***\n")
-    with open("topic.md", 'w') as h:
+    with open(mdfile_topic, 'w') as h:
         h.write(markdown[:N]  + '\n')
-    with open("post.md", 'w') as h:
+    with open(mdfile_post,  'w') as h:
         h.write(markdown[N+5:])
 
-    wiki_page = md2html(mdfile)
-    if wiki_page is None:
-        return
-    
-    title = wiki_page['title']
-    body  = wiki_page['body']
+    topic_page = md2html(mdfile_topic)
+    title = topic_page['title']
+    post_page  = md2html(mdfile_post,title=title)
 
+    from os import remove
+    remove(mdfile_topic)
+    remove(mdfile_post)
+
+    # If the discussion exists, get the object; if not, create a new one
     discussions = [*course.get_discussion_topics()]
-
     if title in [a.title for a in discussions]:
         discussion = discussions[[a.title for a in discussions].index(title)]
     else:
-        discussion = course.create_discussion_topic(title=title, require_initial_post=True)
-    
-    raise Exception("Not yet implemented; see PH204 2022 code")
+        discussion = course.create_discussion_topic(title=title, require_initial_post=True)        
+    discussion.update(message=topic_page['body']) # update with contents
+
+    # Delete all posts made by me and then post the updated solution
+    posts = [*discussion.get_topic_entries()]
+    current_user = canvas.get_current_user()
+    posts = [p for p in posts if p.user_id == current_user.id]
+    for p in posts:
+        try:
+            p.delete()
+            # Seems to be a strange bug in canvasapi which throws a JSON error here, but the action works
+        except:
+            pass
+
+    discussion.post_entry(message=post_page['body'])
 
 if __name__=='__main__':
     # Load credentials and connect to Canvas

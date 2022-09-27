@@ -59,7 +59,7 @@ An existing assignment with the correct name should exist before you try to push
 
 ## Discussions
 
-This is not yet implemented here; it works elsewhere in more scrappy code.
+Discussions markdown files should have a the standard format and, in addition, a line `***` below which a post to be included in the discussion should be included.
 
 ## static
 
