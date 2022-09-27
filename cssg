@@ -197,7 +197,7 @@ if __name__=='__main__':
 
     # Find and push all Assignments
     makedirs("content/Assignments", exist_ok=True)
-    mdfiles = glob("content/Assignments/*.md")
+    mdfiles = glob("content/Assignments/**/*.md", recursive=True)
     for f in mdfiles:
         push_assignment(f)
         
