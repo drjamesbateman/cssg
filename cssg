@@ -58,28 +58,33 @@ def md2html(mdfile,title=None):
     # Pandoc to create the HTML file; we then tinker with it
     system(f"pandoc -t html -F mermaid-filter -o '{htfile}' --webtex '{mdfile}'")
 
-    # Strip all ".md" extensions from hyperlinks; Canvas doesn't like this but other renderers (e.g. github) require it.
+    # Load html
     html = open(htfile).read()
+
+    # Strip all ".md" extensions from hyperlinks; Canvas doesn't like this but other renderers (e.g. github) require it.
     html = html.replace('.md">','">')
-    with open(htfile, 'w') as h:
-        h.write(html)
+
+    # Strangely, seems all internal links are broken; maybe they always were!
+    links = findall("\<a href=\"([^\"]+)\"", html)
+    prefix = f"{config['API_URL']}courses/{config['course']}/pages/"
+    for link in links:
+        if not "://" in link:
+            html = html.replace(f'<a href="{link}"', f'<a href="{prefix}{link}"')
     
     # Equations are a bit of an ugly hack
     # the lines below convert the pandoc code to something using Canvas's renderer
     # see here for why it's double-encoded: https://community.canvaslms.com/t5/Canvas-Instructional-Designer/Best-way-to-add-LaTeX-equations/td-p/175131
-    html = open(htfile).read()
     tag = "https://latex.codecogs.com/png.latex?"
     eqns = findall("\"https://latex.codecogs.com/png.latex\?([^\"]+)\"",html)
     for eqn in eqns:
         html = html.replace(tag + eqn + "\"", "/equation_images/" + quote(eqn) + "\"", 1)
-    with open(htfile, 'w') as h:
-        h.write(html)
-
+        
     # Add borders to tables; crude but e.g. this didn't seem to work: https://stackoverflow.com/questions/27300329/table-with-borders-in-html-and-latex-output-from-markdown-source-with-pandoc
     old = '<table>'
     new = '<table style="border-collapse: collapse;" border="1">'
-    html = open(htfile).read()
     html = html.replace(old,new)
+
+    # Write all changes
     with open(htfile, 'w') as h:
         h.write(html)
 
