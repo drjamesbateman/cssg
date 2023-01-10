@@ -84,6 +84,11 @@ def md2html(mdfile,title=None):
     new = '<table style="border-collapse: collapse;" border="1">'
     html = html.replace(old,new)
 
+    # Replace $base in a hyperlink with the URL defined in config.json
+    old = 'src="$base/'
+    new = f'src="{config["base"]}/'
+    html = html.replace(old,new)
+
     # Write all changes
     with open(htfile, 'w') as h:
         h.write(html)

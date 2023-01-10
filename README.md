@@ -14,6 +14,8 @@ title: Title which matches the filename
 
 For links between Markdown documents to be interpreted correctly by Canvas, then we must mimic the way in which Canvas converts titles to filenames.  The above would become `title-which-matches-the-filename.md`.  A link to this from elsewhere would be `See [here](title-which-matches-the-filename.md)`.
 
+External resources, such as images, can be linked using e.g. `![link name]($base/picture.png)` where `$base` is a URL which is defined in the configuration file (see below).
+
 # Organisation
 
 Create a new folder to store the site.  The folder structure should be:
@@ -36,7 +38,8 @@ Create the file `config.json` containing the following:
 {
   "API_URL" : Full https URL of Canvas,
   "TOKEN"   : API token obtained above,
-  "course"  : integer identifying specific Canvas course
+  "course"  : integer identifying specific Canvas course,
+  "base"    : URL where resources, such as images, are accessible.
   }
 ```
 
