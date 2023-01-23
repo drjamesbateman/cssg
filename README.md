@@ -12,7 +12,7 @@ title: Title which matches the filename
 ---
 ```
 
-For links between Markdown documents to be interpreted correctly by Canvas, then we must mimic the way in which Canvas converts titles to filenames.  The above would become `title-which-matches-the-filename.md`.  A link to this from elsewhere would be `See [here](title-which-matches-the-filename.md)`.
+For links between Markdown documents to be interpreted correctly by Canvas, then we must mimic the way in which Canvas converts titles to filenames.  The above would become `title-which-matches-the-filename.md`.  A link to this from elsewhere would be `See [here](title-which-matches-the-filename)`.
 
 External resources, such as images, can be linked using e.g. `![link name]($base/picture.png)` where `$base` is a URL which is defined in the configuration file (see below).
 
