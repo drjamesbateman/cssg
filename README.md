@@ -54,7 +54,14 @@ general-information.md
 Crystallography/powder-x-ray-camera.md
 ```
 
-Structure of pages within a Canvas module is not controlled, but ordering and indentation should not change when you update page contents.
+Structure of pages within a Canvas module is defined by the file `index.org` inside the relevant directory, e.g. `Crystallography/index.org`.  This file lists all files in the directory and will be created if it is absent.  File names are prefixed with `- ` and two leading spaces (or multiples thereof) indicate indentation level. Changes to ordering or indentation made within Canvas will be overwritten.  An example file is given below:
+
+```
+- introduction-to-xrd.md
+  - powder-x-ray-camera.md
+  - von-laue-condition.md
+- bravais-lattices.md
+```
 
 ## Assignments
 
