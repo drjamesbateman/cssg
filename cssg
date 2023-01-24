@@ -110,69 +110,69 @@ def push_page(mdfile):
     except cx.ResourceDoesNotExist:
         course.create_page(wiki_page)
 
-def set_module_page_order(mdfile):
-    # Is this within a subdirectory, and therefore a module?
-    if mdfile.count('/') != 3: #e.g. content/Modules/Part 1/review-1a.md'
+def read_index(f):
+    with open(f) as h:
+        lines = [l.strip('\n') for l in h.readlines()]
+    index = list()
+    for pos,l in enumerate(lines):
+        index.append((pos+1, l.index("-")//2, l.split("- ")[1].split(".md")[0].strip()))
+    return index
+
+def set_module_page_order(mdir):
+    # This should be a directory
+    assert mdir.endswith("/")
+    
+    # Is this a subdirectory and therefore a module?
+    if mdir.count('/') < 3: #e.g. content/Modules/Part 1/'
         return
+    
+    # Build module name from directory name
+    module_name = mdir.split('/')[-2].replace("_", " ")
 
-    # Build module and page name from filename
-    module_name = mdfile.split('/')[2].replace("_", " ")
-    page_url = mdfile.split('/')[3].split('.md')[0]
-
-    wiki_page = md2html(mdfile)    
-    title = wiki_page['title']
-    body  = wiki_page['body']
-
-    # Is there an index.org file?
-    idxfile = join(dirname(mdfile), "index.org")
-    if exists(idxfile):
-        # If so, find the idx from the location of the mdfile name in index.org
-        lines = [l.strip('\n') for l in open(idxfile).readlines()]
-        idx = [i for i,l in enumerate(lines) if l.endswith(basename(mdfile))]
-        if len(idx) > 0:
-            idx = idx[0] # we do not (yet?) handle more than one appearance
-            indent = lines[idx].index("-")//2 # get the indentation assuming two spaces and "-" before the filename
-        else:
-            # There is an index.org file but this mdfile is not listed; what to do?
-            idx = 10000 # arbitrary large idx to place this file at the end
-            indent = 0
-    else:
-        # There is no index.org file; what to do?
-        idx = None # do not explicitly set the location
-        indent = None
-            
-    # Create the module (if necessary)
+    # Create the module (if necessary); then get the instance
     module_names = [m.name for m in course.get_modules()]
     if not module_name in module_names:
         print("Creating module", module_name)
         course.create_module({"name": module_name})
+    module = [m for m in course.get_modules() if m.name == module_name][0]       
 
-    # Add the page to the module (if necessary)
-    modules = [*course.get_modules()]
-    m = [m for m in modules if m.name == module_name][0]
-    existing = [p for p in m.get_module_items() if (p.title, p.page_url)==(title, page_url)]
-    update = True
-    if len(existing) > 0:
-        # The page already exists.  Great.  Is it in the right position with the correct indent?
-        p = existing[0] # we do not (yet) allow more than one appearance in a module
-        print(f"Page {title} already exists.  Should be idx {idx}; indent {indent}.  Is at present idx {p.position}; indent {p.indent}.")
-        if idx is None:
-            update = False
-        else:
-            if p.position == idx and p.indent == indent:
-                update = False
-        # If we intend to update, then remove this instance (we will recreate it)
-        p.delete()
+    # Get information about the pages and their position/indent in this module
+    pages = [p for p in module.get_module_items()]
+    pages_info = [(p.position, p.indent, p.page_url) for p in pages]
+    pages_info.sort(key = lambda p: p[0]) # sort by position
         
-        # Remove all other instances of this page in this module
-        for p in existing[1:]:
-            p.delete()
-    if update:
-        print(f"Adding page {title} to module {module_name}")
-        if idx is None:
-            m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url})
-        else:
-            m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url, 'position': idx, 'indent': indent})                    
+    # Is there an index.org file?
+    idxfile = join(mdir, "index.org")
+    if exists(idxfile):
+        # If so, extract what the ordering and indenting should be
+        target_info = read_index(idxfile)
+    else:
+        target_info = []
+        
+    # Get a list of files which should appear in the module
+    mdfiles = glob(join(dirname(idxfile),"**/*.md"),recursive=True)
+    names = [basename(f)[:-3] for f in mdfiles]
+
+    # Append any files which are not present in the index.org file and reload
+    missing = set(names) - set([t[2] for t in target_info])
+    if len(missing) > 0:
+        with open(idxfile, 'w') as h:
+            for m in missing:
+                h.write(f"- {m}\n")
+        target_info = read_index(idxfile)
+            
+    # If the layouts agree, then nothing to do
+    if pages_info == target_info:
+        return
+
+    # Otherwise, scrub it and start again
+    for p in pages: p.delete() # delete all pages in the module
+    all_pages = [*course.get_pages()] # get all pages
+
+    for position,indent,url in target_info:
+        p = [p for p in all_pages if p.url == url][0]
+        print(f"Module : {module_name} / Page : {p.title} : ({position}, {indent})")
+        module.create_module_item({'title': p.title, 'type': 'Page', 'page_url': p.url, 'position': position, 'indent': indent})                    
     
 def push_assignment(mdfile):
     if not md_needs_updating(mdfile): return   
@@ -241,12 +241,16 @@ if __name__=='__main__':
     canvas = Canvas(config['API_URL'], config['TOKEN'])
     course = canvas.get_course(config['course'])
 
-    # Find and push all Modules
+    # Find and push all pages
     makedirs("content/Modules", exist_ok=True)
     mdfiles = glob("content/Modules/**/*.md", recursive=True)
     for f in mdfiles:
         push_page(f)
-        set_module_page_order(f)
+
+    # Add pages to relevant modules and set order if specified
+    mdirs = glob("content/Modules/**/", recursive=True)
+    for mdir in mdirs:
+        set_module_page_order(mdir)
         
     # Find and push all Assignments
     makedirs("content/Assignments", exist_ok=True)
