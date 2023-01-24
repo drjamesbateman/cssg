@@ -6,7 +6,7 @@ from canvasapi import exceptions as cx
 from re import findall
 from urllib.parse import quote
 from os import system, stat, makedirs
-from os.path import exists, dirname
+from os.path import exists, dirname, join, basename
 import json
 
 def mdfilename2htmlfilename(mdf):
@@ -104,34 +104,70 @@ def push_page(mdfile):
     title = wiki_page['title']
     body  = wiki_page['body']
     
-    # If this is in a sub-directory, then assume that is the intended Canvas Module
-    if mdfile.count('/') == 3: #e.g. content/Modules/Part 1/review-1a.md'
-        module_name = mdfile.split('/')[2].replace("_", " ")
-        page_url = mdfile.split('/')[3].split('.md')[0]
-    else:
-        module_name = None
-        # page_url is only needed when we're putting a page into a Canvas Module
-        
     try:
         page = course.get_page(wiki_page['title'])
         page.edit(wiki_page=wiki_page)
     except cx.ResourceDoesNotExist:
         course.create_page(wiki_page)
 
-    if module_name is not None:
-        module_names = [m.name for m in course.get_modules()]
-        if not module_name in module_names:
-            print("Creating module", module_name)
-            course.create_module({"name": module_name})
-        modules = [*course.get_modules()]
-        m = [m for m in modules if m.name == module_name][0]
-        existing = [(m.title, m.page_url) for m in m.get_module_items()]
-        if (title, page_url) in existing:
-            pass
-        else:
-            print("Adding page to module", module_name)
-            m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url})
+def set_module_page_order(mdfile):
+    # Is this within a subdirectory, and therefore a module?
+    if mdfile.count('/') != 3: #e.g. content/Modules/Part 1/review-1a.md'
+        return
 
+    # Build module and page name from filename
+    module_name = mdfile.split('/')[2].replace("_", " ")
+    page_url = mdfile.split('/')[3].split('.md')[0]
+
+    wiki_page = md2html(mdfile)    
+    title = wiki_page['title']
+    body  = wiki_page['body']
+
+    # Is there an index.org file?
+    idxfile = join(dirname(mdfile), "index.org")
+    if exists(idxfile):
+        # If so, find the idx from the location of the mdfile name in index.org
+        lines = [l.strip('\n') for l in open(idxfile).readlines()]
+        idx = [i for i,l in enumerate(lines) if l.endswith(basename(mdfile))]
+        if len(idx) > 0:
+            idx = idx[0] # we do not (yet?) handle more than one appearance
+            indent = lines[idx].index("-")//2 # get the indentation assuming two spaces and "-" before the filename
+        else:
+            # There is an index.org file but this mdfile is not listed; what to do?
+            idx = 10000 # arbitrary large idx to place this file at the end
+            indent = 0
+    else:
+        # There is no index.org file; what to do?
+        idx = None # do not explicitly set the location
+        indent = None
+            
+    # Create the module (if necessary)
+    module_names = [m.name for m in course.get_modules()]
+    if not module_name in module_names:
+        print("Creating module", module_name)
+        course.create_module({"name": module_name})
+
+    # Add the page to the module (if necessary)
+    modules = [*course.get_modules()]
+    m = [m for m in modules if m.name == module_name][0]
+    existing = [p for p in m.get_module_items() if (p.title, p.page_url)==(title, page_url)]
+    update = True
+    if len(existing) > 0:
+        # The page already exists.  Great.  Is it in the right position with the correct indent?
+        p = existing[0] # we do not (yet) handle more than one appearance in a module
+        if idx is None:
+            update = False
+        else:
+            if p.position == idx and p.indent == indent:
+                update = False
+        
+    if update:
+        print("Adding page to module", module_name)
+        if idx is None:
+            m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url})
+        else:
+            m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url, 'position': idx, 'indent': indent})                    
+    
 def push_assignment(mdfile):
     if not md_needs_updating(mdfile): return   
     wiki_page = md2html(mdfile)
@@ -204,7 +240,8 @@ if __name__=='__main__':
     mdfiles = glob("content/Modules/**/*.md", recursive=True)
     for f in mdfiles:
         push_page(f)
-
+        set_module_page_order(f)
+        
     # Find and push all Assignments
     makedirs("content/Assignments", exist_ok=True)
     mdfiles = glob("content/Assignments/**/*.md", recursive=True)
