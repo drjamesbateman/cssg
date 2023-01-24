@@ -113,6 +113,7 @@ def push_page(mdfile):
 def read_index(f):
     with open(f) as h:
         lines = [l.strip('\n') for l in h.readlines()]
+        lines = [l for l in lines if l != ""]
     index = list()
     for pos,l in enumerate(lines):
         index.append((pos+1, l.index("-")//2, l.split("- ")[1].split(".md")[0].strip()))
