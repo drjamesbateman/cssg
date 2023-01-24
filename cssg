@@ -154,15 +154,21 @@ def set_module_page_order(mdfile):
     update = True
     if len(existing) > 0:
         # The page already exists.  Great.  Is it in the right position with the correct indent?
-        p = existing[0] # we do not (yet) handle more than one appearance in a module
+        p = existing[0] # we do not (yet) allow more than one appearance in a module
+        print(f"Page {title} already exists.  Should be idx {idx}; indent {indent}.  Is at present idx {p.position}; indent {p.indent}.")
         if idx is None:
             update = False
         else:
             if p.position == idx and p.indent == indent:
                 update = False
+        # If we intend to update, then remove this instance (we will recreate it)
+        p.delete()
         
+        # Remove all other instances of this page in this module
+        for p in existing[1:]:
+            p.delete()
     if update:
-        print("Adding page to module", module_name)
+        print(f"Adding page {title} to module {module_name}")
         if idx is None:
             m.create_module_item({'title': title, 'type': 'Page', 'page_url': page_url})
         else:
