@@ -174,7 +174,10 @@ def set_module_page_order(mdir):
     all_pages = [*course.get_pages()] # get all pages
 
     for position,indent,url in target_info:
-        p = [p for p in all_pages if p.url == url][0]
+        try:
+            p = [p for p in all_pages if p.url == url][0]
+        except IndexError:
+            raise Exception(f"Unable to find page {url}.  Check for typos in index.org?")
         print(f"Module : {module_name} / Page : {p.title} : ({position}, {indent})")
         module.create_module_item({'title': p.title, 'type': 'Page', 'page_url': p.url, 'position': position, 'indent': indent})                    
     
