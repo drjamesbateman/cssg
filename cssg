@@ -111,6 +111,7 @@ def push_page(mdfile):
         course.create_page(wiki_page)
 
 def read_index(f):
+    """Read a file which defines order and indentation for pages in a module"""
     with open(f) as h:
         lines = [l.strip('\n') for l in h.readlines()]
         lines = [l for l in lines if l != ""]
@@ -120,7 +121,9 @@ def read_index(f):
     return index
 
 def set_module_page_order(mdir):
-    # This should be a directory
+    """Set the order and indentation of pages in a module.
+    mdir should be a path e.g. './content/Modules/Part_1/'"""
+    
     assert mdir.endswith("/")
     
     # Is this a subdirectory and therefore a module?
@@ -157,9 +160,9 @@ def set_module_page_order(mdir):
     # Append any files which are not present in the index.org file and reload
     missing = set(names) - set([t[2] for t in target_info])
     if len(missing) > 0:
-        with open(idxfile, 'w') as h:
+        with open(idxfile, 'a') as h:
             for m in missing:
-                h.write(f"- {m}\n")
+                h.write(f"- {m}.md\n")
         target_info = read_index(idxfile)
             
     # If the layouts agree, then nothing to do
