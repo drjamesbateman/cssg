@@ -56,7 +56,7 @@ def md2html(mdfile,title=None):
         raise Exception(f"No title for {mdfile}")
     
     # Pandoc to create the HTML file; we then tinker with it
-    system(f"pandoc -t html -F mermaid-filter -o '{htfile}' --webtex '{mdfile}'")
+    system(f"pandoc -t html -o '{htfile}' --webtex '{mdfile}'")
 
     # Load html
     html = open(htfile).read()
