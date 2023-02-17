@@ -64,6 +64,16 @@ def md2html(mdfile,title=None):
     # Strip all ".md" extensions from hyperlinks; Canvas doesn't like this but other renderers (e.g. github) require it.
     html = html.replace('.md">','">')
 
+    # Replace $base in a hyperlink with the URL defined in config.json
+    old = 'href="$base/'
+    new = f'href="{config["base"]}/'
+    html = html.replace(old,new)
+
+    # Replace $base in an image with the URL defined in config.json
+    old = 'src="$base/'
+    new = f'src="{config["base"]}/'
+    html = html.replace(old,new)
+
     # Strangely, seems all internal links are broken; maybe they always were!
     links = findall("\<a href=\"([^\"]+)\"", html)
     prefix = f"{config['API_URL']}courses/{config['course']}/pages/"
@@ -82,11 +92,6 @@ def md2html(mdfile,title=None):
     # Add borders to tables; crude but e.g. this didn't seem to work: https://stackoverflow.com/questions/27300329/table-with-borders-in-html-and-latex-output-from-markdown-source-with-pandoc
     old = '<table>'
     new = '<table style="border-collapse: collapse;" border="1">'
-    html = html.replace(old,new)
-
-    # Replace $base in a hyperlink with the URL defined in config.json
-    old = 'src="$base/'
-    new = f'src="{config["base"]}/'
     html = html.replace(old,new)
 
     # Write all changes
