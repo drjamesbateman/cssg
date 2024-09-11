@@ -75,7 +75,7 @@ def md2html(mdfile,title=None):
     html = html.replace(old,new)
 
     # Strangely, seems all internal links are broken; maybe they always were!
-    links = findall("\<a href=\"([^\"]+)\"", html)
+    links = findall(r"\<a href=\"([^\"]+)\"", html)
     prefix = f"{config['API_URL']}courses/{config['course']}/pages/"
     for link in links:
         if not "://" in link:
@@ -85,7 +85,7 @@ def md2html(mdfile,title=None):
     # the lines below convert the pandoc code to something using Canvas's renderer
     # see here for why it's double-encoded: https://community.canvaslms.com/t5/Canvas-Instructional-Designer/Best-way-to-add-LaTeX-equations/td-p/175131
     tag = "https://latex.codecogs.com/png.latex?"
-    eqns = findall("\"https://latex.codecogs.com/png.latex\?([^\"]+)\"",html)
+    eqns = findall(r"\"https://latex.codecogs.com/png.latex\?([^\"]+)\"",html)
     for eqn in eqns:
         html = html.replace(tag + eqn + "\"", "/equation_images/" + quote(eqn) + "\"", 1)
         
