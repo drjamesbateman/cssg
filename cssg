@@ -102,17 +102,45 @@ def md2html(mdfile,title=None):
     return {'title': title, 'body': body}
 
         
+def sanitize_title_to_url(title):
+    """Convert a page title to a clean URL slug."""
+    import re
+    # Convert to lowercase and replace spaces/special chars with hyphens
+    url = re.sub(r'[^\w\s-]', '', title.lower())
+    url = re.sub(r'[-\s]+', '-', url)
+    return url.strip('-')
+
+def find_page_by_title_or_url(course, title, expected_url):
+    """Find a page by title first, then by URL if title lookup fails."""
+    try:
+        # Try title-based lookup first
+        return course.get_page(title)
+    except cx.ResourceDoesNotExist:
+        try:
+            # Try URL-based lookup
+            return course.get_page(expected_url)
+        except cx.ResourceDoesNotExist:
+            # Try scanning all pages for matching title (fallback)
+            for page in course.get_pages():
+                if page.title == title:
+                    return page
+            return None
+
 def push_page(mdfile):
     if not md_needs_updating(mdfile): return
     wiki_page = md2html(mdfile)
-    
+
     title = wiki_page['title']
     body  = wiki_page['body']
-    
-    try:
-        page = course.get_page(wiki_page['title'])
+    expected_url = sanitize_title_to_url(title)
+
+    # Explicit URL specification to work around Canvas phantom URL bug
+    wiki_page['url'] = expected_url
+
+    page = find_page_by_title_or_url(course, title, expected_url)
+    if page is not None:
         page.edit(wiki_page=wiki_page)
-    except cx.ResourceDoesNotExist:
+    else:
         course.create_page(wiki_page)
 
 def read_index(f):
@@ -180,9 +208,22 @@ def set_module_page_order(mdir):
 
     for position,indent,url in target_info:
         try:
+            # First try exact URL match
             p = [p for p in all_pages if p.url == url][0]
         except IndexError:
-            raise Exception(f"Unable to find page {url}.  Check for typos in index.org?")
+            try:
+                # If exact match fails, try to find pages with suffixed URLs (phantom URL bug workaround)
+                p = [p for p in all_pages if p.url.startswith(url + '-')][0]
+                print(f"Warning: Using suffixed URL {p.url} for expected {url} (Canvas phantom URL bug)")
+            except IndexError:
+                # Finally, try to find by title (last resort)
+                expected_title = url.replace('-', ' ').title()
+                matching_pages = [p for p in all_pages if p.title.lower() == expected_title.lower()]
+                if matching_pages:
+                    p = matching_pages[0]
+                    print(f"Warning: Found page by title '{p.title}' for URL {url}")
+                else:
+                    raise Exception(f"Unable to find page {url}. Check for typos in index.org? Available URLs: {[p.url for p in all_pages[:5]]}")
         print(f"Module : {module_name} / Page : {p.title} : ({position}, {indent})")
         module.create_module_item({'title': p.title, 'type': 'Page', 'page_url': p.url, 'position': position, 'indent': indent})                    
     
