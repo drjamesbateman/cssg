@@ -26,7 +26,9 @@ def sanitize_dirname(text):
     match = re.match(r'Part (\d+):\s*(.*)', text.strip())
     if match:
         part_num, part_name = match.groups()
-        clean_name = sanitize_filename(part_name)
+        # Convert to title case with underscores instead of lowercase with hyphens
+        clean_name = re.sub(r'[^\w\s]', '', part_name.strip())  # Remove special chars
+        clean_name = re.sub(r'\s+', '_', clean_name.title())     # Title case with underscores
         return f"Part_{part_num}_{clean_name}"
     return sanitize_filename(text)
 
