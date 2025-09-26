@@ -78,8 +78,18 @@ def md2html(mdfile,title=None):
     links = findall(r"\<a href=\"([^\"]+)\"", html)
     prefix = f"{config['API_URL']}courses/{config['course']}/pages/"
     for link in links:
-        if not "://" in link:
+        if not "://" in link and not link.startswith("./base/"):
             html = html.replace(f'<a href="{link}"', f'<a href="{prefix}{link}"')
+
+    # Replace ./base/ in a hyperlink with the URL defined in config.json (after internal link processing)
+    old = 'href="./base/'
+    new = f'href="{config["base"]}/'
+    html = html.replace(old,new)
+
+    # Replace ./base/ in an image with the URL defined in config.json
+    old = 'src="./base/'
+    new = f'src="{config["base"]}/'
+    html = html.replace(old,new)
     
     # Equations are a bit of an ugly hack
     # the lines below convert the pandoc code to something using Canvas's renderer
