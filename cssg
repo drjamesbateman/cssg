@@ -64,17 +64,18 @@ def md2html(mdfile,title=None):
     # Strip all ".md" extensions from hyperlinks; Canvas doesn't like this but other renderers (e.g. github) require it.
     html = html.replace('.md">','">')
 
-    # Convert custom image syntax ![description|width](url) to HTML with width attribute
+    # Convert custom image syntax ![description|width](url) to HTML with width attribute.
+    # An optional |left|/|right| float marker (for PDF rendering elsewhere) is ignored.
     import re
     # Handle both standalone img tags and img tags within figures
-    image_pattern = r'<img src="([^"]+)"\s*alt="([^|]*)\|(\d+)"([^>]*)/>'
+    image_pattern = r'<img src="([^"]+)"\s*alt="([^|]*)\|(?:(?:left|right)\|)?(\d+)"([^>]*)/>'
     def replace_image_with_width(match):
         src, alt_text, width, rest = match.groups()
         return f'<img src="{src}" alt="{alt_text}" width="{width}"{rest}/>'
     html = re.sub(image_pattern, replace_image_with_width, html)
 
-    # Clean up figcaptions that still contain |width
-    figcaption_pattern = r'(<figcaption[^>]*>.*?)\|(\d+)(</figcaption>)'
+    # Clean up figcaptions that still contain |width (or |side|width)
+    figcaption_pattern = r'(<figcaption[^>]*>.*?)\|(?:(?:left|right)\|)?(\d+)(</figcaption>)'
     def clean_figcaption(match):
         start, width, end = match.groups()
         return f'{start}{end}'
