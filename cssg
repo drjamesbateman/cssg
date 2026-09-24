@@ -55,8 +55,10 @@ def md2html(mdfile,title=None):
     if title is None:
         raise Exception(f"No title for {mdfile}")
     
-    # Pandoc to create the HTML file; we then tinker with it
-    system(f"pandoc -t html -o '{htfile}' --webtex '{mdfile}'")
+    # Pandoc to create the HTML file; we then tinker with it.
+    # Optional Lua filters (e.g. callout boxes) may be listed in config.json.
+    filters = " ".join(f"--lua-filter='{f}'" for f in config.get("lua_filters", []))
+    system(f"pandoc -t html {filters} -o '{htfile}' --webtex '{mdfile}'")
 
     # Load html
     html = open(htfile).read()
